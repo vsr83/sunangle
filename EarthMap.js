@@ -1,3 +1,7 @@
+/**
+ * Class for the extraction of polygons from JSON and their visualization
+ * on a HTML canvas.
+ */
 class EarthMap
 {
     /**
