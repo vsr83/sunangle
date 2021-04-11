@@ -1,0 +1,16 @@
+{
+  "name": "sunangle",
+  "version": "1.0.0",
+  "description": "Visualization of Sun altitude",
+  "main": "main.js",
+  "scripts": {
+    "start" : "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Ville Räisänen",
+  "license": "GPL",
+  "devDependencies": {
+    "electron": "^12.0.2"
+  }
+}
