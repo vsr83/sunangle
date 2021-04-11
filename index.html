@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Daylight</title>
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
+</head>
+<body style="background: black; color: white; overflow-y: hidden; overflow-x: hidden">
+    <p id="timeLabel">
+    Local : <span id="localtime"></span><br>
+    UTC: <span id="utctime"></span><br>
+    Julian: <span id="juliantime"></span></p>
+
+    <canvas id="worldGraph" width="1000" height="600" style="border:1px solid #000000;">
+    </canvas>
+    <script src="computation/Coordinates.js"></script>
+    <script src="computation/TimeConversions.js"></script>
+    <script src="computation/Orbits.js"></script>
+    <script src="computation/SunAltitude.js"></script>
+    <script src="./EarthMap.js"></script>
+
+    <script>
+        /**
+         * Redraw the map and the contour according to the Sun altitude.
+         * 
+         * @param {*} earthMap 
+         *     The EarthMap object used for drawing the map.
+         */
+        function update(earthMap)
+        {
+            // Start measuring time required to update the image.
+            var t0 = performance.now();
+
+            var canvas = earthMap.canvas;
+
+            // Get height of the time label.
+            var timeLabel = document.getElementById("timeLabel");
+            var timeHeight = timeLabel.getBoundingClientRect().height;
+            console.log(timeHeight);
+            // Adjust the canvas height according to the body size and the height of the time label.
+            var body = document.getElementsByTagName('body')[0];
+            canvas.width = document.documentElement.clientWidth;
+            canvas.height = document.documentElement.clientHeight - timeHeight;
+
+            // Compute Julian time.
+            var today = new Date();
+            julianTimes = TimeConversions.computeJulianTime(today);
+            JD = julianTimes.JD;
+            JT = julianTimes.JT;
+
+            // Update Julian time to the time label.
+            document.getElementById("localtime").innerText = today.toTimeString();
+            document.getElementById("utctime").innerText = today.toUTCString();
+            document.getElementById("juliantime").innerText = JT;
+            
+            // Compute equitorial coordinates of the Sun.
+            var sunAltitude = new SunAltitude();
+            var eqCoords = sunAltitude.computeEquitorial(JT);
+            var rA = eqCoords.rA;
+            var decl = eqCoords.decl;
+
+            console.log("Right Ascension : " + Coordinates.rad2Deg(rA) + " deg ");
+            console.log("Declination     : " + Coordinates.rad2Deg(decl) + " deg");
+            
+            console.log("Drawing.");
+            var ctx = canvas.getContext("2d");
+            ctx.imageSmoothingEnabled = true;
+
+            // Draw the contour background image according to Sun altitude.
+            var imageData = ctx.getImageData(0,0, canvas.width, canvas.height);
+
+            for (var x = 0; x < canvas.width; x++)
+            {
+                for (var y = 0; y < canvas.height; y++)
+                {
+                    // Map the pixel on the canvas to latitude and longitude on Earth.
+                    var location = earthMap.canvasToLocation(x, y);
+                    // Compute the altitude.
+                    var altitude = sunAltitude.computeAltitude(rA, decl, JD, JT,
+                            location.lon, location.lat);
+                    
+                    // Index in the imagedata array.
+                    var index = (x + y * canvas.width) * 4;
+                    if (altitude > 0.0)
+                    {
+                        color = 128 + 10 * Math.floor(altitude / 10.0);
+
+                        imageData.data[index] = color;
+                        imageData.data[index+1] = color;
+                        imageData.data[index+2] = color;
+                        imageData.data[index+3] = 255;
+                    }
+                    else
+                    {
+                        color = 90 - 5 * Math.floor(-altitude / 10.0);
+
+                        imageData.data[index] = color;
+                        imageData.data[index+1] = color;
+                        imageData.data[index+2] = color;
+                        imageData.data[index+3] = 255;
+
+                    }
+                }
+            }
+            ctx.putImageData(imageData, 0, 0);
+            coordHome = earthMap.locationToCanvas(24.9333, 60.16);
+
+            // Draw the map overlay.
+            earthMap.draw(ctx);
+
+            console.log("Finished.");
+            var t1 = performance.now();
+            console.log((t1 - t0) + " ms");
+        }
+
+        // Make listener for loading the World map JSON at start.
+        window.addEventListener('load', () => {
+            var earthMap = new EarthMap();
+
+            var xmlHTTP = new XMLHttpRequest();
+            xmlHTTP.onreadystatechange = function()
+            {
+                console.log("readyState: " + this.readyState);
+                console.log("status:     " + this.status);
+
+                if (this.readyState == 4 && this.status == 200)
+                {
+                    // Parse JSON and initialize World map.
+                    var dataJSON = JSON.parse(this.responseText);
+                    earthMap.processJSON(dataJSON);
+                    // Associate canvas to the EarthMap object.
+                    var canvas = document.getElementById("worldGraph");
+                    earthMap.setCanvas(canvas);
+                    // Draw the map and add periodic update of the graph.
+                    update(earthMap);
+                    setInterval(function() {update(earthMap);}, 1000);
+                }
+            }
+            xmlHTTP.open("GET", "json/worldmap.json", true);
+            xmlHTTP.send();
+
+            // Redraw the graph always after resize.
+            body = document.getElementsByTagName('body')[0],
+            body.onresize = function()
+            {
+                update(earthMap);
+            }
+        })
+
+
+    </script>
+</body>
+</html
