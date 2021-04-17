@@ -87,8 +87,8 @@ class EarthMap
 
             //return {x: centerX + lon,
             //        y: centerY + r};
-            return {x: centerX + r * Math.cos(2.0 * Math.PI * lon / 360.0),
-                    y: centerY + r * Math.sin(2.0 * Math.PI * lon / 360.0)};
+            return {x: centerX + r * Math.cos(-2.0 * Math.PI * lon / 360.0),
+                    y: centerY + r * Math.sin(-2.0 * Math.PI * lon / 360.0)};
         }
     }
 
@@ -122,7 +122,7 @@ class EarthMap
             var deltaY = y - centerY;
 
             var r = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
-            var lon = 360.0 * Math.atan2(deltaY, deltaX) / (2.0 * Math.PI);
+            var lon = -360.0 * Math.atan2(deltaY, deltaX) / (2.0 * Math.PI);
             var lat = 90.0 - 180.0 * r / radius;
 
             var outside = false;
