@@ -116,6 +116,8 @@
         var deltaHours = 0;
         var deltaDays = 0;
 
+        var interval = null;
+
         // Colors for the grid and map lines.
         var gridColor = "#aaaaaa";
         var mapColor = "#000000";
@@ -247,6 +249,11 @@
          */
         function update(earthMap, fast)
         {
+            if (interval != null)
+            {
+                clearInterval(interval);
+            }
+
             // Start measuring time required to update the image.
             var t0 = performance.now();
 
@@ -408,7 +415,10 @@
             console.log("Finished.");
             var t1 = performance.now();
             console.log((t1 - t0) + " ms");
-        }
+
+            //timeout = setTimeout(function(){update(earthMap, false);}, 1000);
+            interval = setInterval(function() {update(earthMap);}, 1000);
+            }
 
         // Make listener for loading the World map JSON at start.
         window.addEventListener('load', () => {
@@ -431,7 +441,7 @@
                     earthMap.setCanvas(canvas);
                     // Draw the map and add periodic update of the graph.
                     update(earthMap, false);
-                    setInterval(function() {update(earthMap);}, 1000);
+                    //setInterval(function() {update(earthMap);}, 1000);
 
                     canvas.addEventListener('click', function(event) {
                         var x = event.pageX - canvas.offsetLeft - canvas.clientLeft;
