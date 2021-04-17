@@ -39,6 +39,25 @@ Coordinates.equitorialToHorizontal = (h, delta, phi) => {
      a : Math.asin(Math.cos(h)*Math.cos(delta)*Math.cos(phi) + Math.sin(delta)*Math.sin(phi)),
      A : Math.PI + Math.atan2(Math.sin(h)*Math.cos(delta), Math.cos(h)*Math.cos(delta)*Math.sin(phi) - Math.sin(delta)*Math.cos(phi))};};
 
+/**
+ * Convert from horizontal to equitorial coordinate systems.
+ * 
+ * @param {*} a 
+ *     Altitude.
+ * @param {*} A 
+ *     Azimuth.
+ * @param {*} phi
+ *     Latitude. 
+ * @returns The declination and hour angle.
+ */
+Coordinates.horizontalToEquitorial = (a, A, phi) => {
+    delta = Math.asin(-Math.cos(A)*Math.cos(a)*Math.cos(phi) + Math.sin(a)*Math.sin(phi));
+    return {
+     delta : delta,
+     h : Math.atan2(Math.sin(A) * Math.cos(a) / Math.cos(delta) , 
+                   (Math.cos(A) * Math.cos(a) * Math.sin(phi) + Math.sin(a) * Math.cos(phi)) / Math.cos(delta))
+    }
+}
 
 /**
  * Convert value in degrees to hours, minutes and seconds.

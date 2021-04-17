@@ -79,4 +79,33 @@ class SunAltitude
 
         return altitude;
     }
+
+    /**
+     * Compute the longitude and latitude of the location, where Sun is at Zenith.
+     * 
+     * @param {*} rA 
+     *     Right-ascension of the Sun (in radians).
+     * @param {*} decl 
+     *     Declination of the Sun (in radians).
+     * @param {*} JD 
+     *     Julian day.
+     * @param {*} JT 
+     *     Julian time.
+     * @returns The longitude and latitude.
+     */
+    computeSunLonLat(rA, decl, JD, JT)
+    {
+        var ST0 = TimeConversions.computeSiderealTime(0, JD, JT);
+        var lon = Coordinates.rad2Deg(limitAngle(Math.PI + rA - Coordinates.deg2Rad(ST0))) - 180.0;
+        var lat = Coordinates.rad2Deg(decl);
+
+        console.log("decl " + decl);
+        console.log("lat " + lat);
+        if (lat > 90.0) 
+        {
+            lat -= 360.0;
+        }
+
+        return {lon : lon, lat : lat};
+    }
 }

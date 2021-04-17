@@ -62,6 +62,11 @@
         Enable Grid: <input type="checkbox" id="gridCheckbox" onclick="toggleGrid()"><br>
         <label for="gridColor">Grid Color: </label>
         <input type="color" id="gridColor" name="gridColor" value="#aaaaaa"><br>
+
+        <h4>Sun Path:</h4>
+        Enable Sun Path: <input type="checkbox" id="pathCheckbox" onclick="togglePath()"><br>
+        <label for="pathColor">Path Color: </label>
+        <input type="color" id="pathColor" name="pathColor" value="#cccccc"><br>
         
         <h4>Map:</h4>
         <label for="mapColor">Map Color: </label>
@@ -70,7 +75,22 @@
         <h4>Contour Data:</h4>
         <label for="contourRange">Degrees per Contour: </label>
         <input type="range" min="1" max="90" value="10" name="contourRange" class="slider" id="contourRange">
-               
+
+        <h4>Delta Time:</h4>
+        <label for="minuteRange">Minutes: </label>
+        <input type="range" min="-60" max="60" value="0" name="minuteRange" class="slider" id="deltaMinRange">
+        <label for="minuteRange" id="deltaMin"> 0 </label>
+        <br>
+        <label for="hourRange">Hours: </label>
+        <input type="range" min="-24" max="24" value="0" name="hourRange" class="slider" id="deltaHourRange">
+        <label for="hourRange" id="deltaHour"> 0 </label>
+        <br>
+        <label for="dayRange">Days: </label>
+        <input type="range" min="-180" max="180" value="0" name="dayRange" class="slider" id="deltaDayRange">
+        <label for="dayRange" id="deltaDay"> 0 </label>
+        <br>
+
+
         <button class="closebutton" onclick="closeSidebar()">Hide Configuration</button>
     </div>
 
@@ -87,17 +107,28 @@
         var projection = "equirectangular";
         // Boolean indicating whether grid is drawn.
         var gridEnabled = false;
+        // Boolean indicating whether path is drawn.
+        var pathEnabled = false;
         // Degrees per contour
         var degreesPerContour = 10;
+        // Delta-time
+        var deltaMins = 0;
+        var deltaHours = 0;
+        var deltaDays = 0;
 
         // Colors for the grid and map lines.
         var gridColor = "#aaaaaa";
         var mapColor = "#000000";
+        var pathColor = "#cccccc";
 
         // Define event handlers for the selection of grid and map colors.
         document.getElementById("gridColor").onchange = function() 
         {
             gridColor = this.value;
+        }
+        document.getElementById("pathColor").onchange = function() 
+        {
+            pathColor = this.value;
         }
         document.getElementById("mapColor").onchange = function() 
         {
@@ -107,6 +138,24 @@
         {
             degreesPerContour = this.value;
         }
+        document.getElementById("deltaHourRange").oninput = function() 
+        {
+            console.log("Delta hours " + this.value);
+            deltaHours = this.value;
+            document.getElementById("deltaHour").innerText = this.value;
+        }
+        document.getElementById("deltaMinRange").oninput = function() 
+        {
+            console.log("Delta minutes " + this.value);
+            deltaMins = this.value;
+            document.getElementById("deltaMin").innerText = this.value;
+        }
+        document.getElementById("deltaDayRange").oninput = function() 
+        {
+            console.log("Delta days " + this.value);
+            deltaDays = this.value;
+            document.getElementById("deltaDay").innerText = this.value;
+        }
 
         /**
          * Set projection type used for the plotting of data.
@@ -114,7 +163,7 @@
          * @param {*} newProjection 
          *     The projection type..
          */
-         function setProjection(newProjection)
+        function setProjection(newProjection)
         {
             console.log("New projection : " + newProjection);
             projection = newProjection;
@@ -132,6 +181,15 @@
         }
 
         /**
+         * Toggle drawing of the path.
+         */
+        function togglePath()
+        {
+            var checkBox = document.getElementById("pathCheckbox");
+            pathEnabled = checkBox.checked;
+        }
+
+        /**
          * Make sidebar visible.
          */
         function openSidebar()
@@ -140,6 +198,27 @@
 
             document.getElementById("confSidebar").style.width = "250px";
             document.getElementById("main").style.marginRight = "250px";
+        }
+
+        /**
+         * Map angle to the interval [0, 2*pi].
+         *  
+         * @param {*} rad 
+         *     The angle (in radians).
+         * @returns The mapped angle.
+         */
+        function limitAngle(rad)
+        {
+            var interval = 2 * Math.PI;
+            if (rad < 0)
+            {
+                rad += (1 + Math.floor(-rad / interval)) * interval;
+            }
+            else
+            {
+                rad = rad % interval;
+            }
+            return rad;
         }
 
         /**
@@ -183,7 +262,11 @@
             canvas.height = document.documentElement.clientHeight - timeHeight;
 
             // Compute Julian time.
-            var today = new Date();
+            var today = new Date(new Date().getTime() 
+            + 24 * 3600 * 1000 * deltaDays
+            + 3600 * 1000 * deltaHours
+            + 60 * 1000 * deltaMins);
+            console.log("hours " + today.getHours());
             julianTimes = TimeConversions.computeJulianTime(today);
             JD = julianTimes.JD;
             JT = julianTimes.JT;
@@ -273,6 +356,41 @@
                 ctx.lineWidth = 0.5;
                 ctx.strokeStyle = gridColor;
                 earthMap.drawGrid(ctx);
+            }
+
+            if (pathEnabled)
+            {
+                // Draw Sun path.
+                ctx.beginPath();
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = pathColor;
+
+                for (var JDdiff = -0.5; JDdiff <= 0.5; JDdiff += 0.01)
+                {
+                    lonlat = sunAltitude.computeSunLonLat(rA, decl, JD, JT + JDdiff);
+
+                    var p = earthMap.locationToCanvas(lonlat.lon, lonlat.lat);
+
+
+                    if (JDdiff == -0.5)
+                    {
+                        ctx.moveTo(p.x, p.y);
+                    }
+                    else
+                    {
+                        ctx.lineTo(p.x, p.y);
+                    }
+                }
+                ctx.stroke();
+
+                // Draw current location
+                lonlat = sunAltitude.computeSunLonLat(rA, decl, JD, JT);
+                var p = earthMap.locationToCanvas(lonlat.lon, lonlat.lat);
+                ctx.beginPath();
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = "#000000";
+                ctx.arc(p.x, p.y, 5, 0, 2*Math.PI);
+                ctx.fill();
             }
 
             console.log("Finished.");
