@@ -13,6 +13,18 @@ class EarthMap
     }
 
     /**
+     * Set the projection associated to the map.
+     * 
+     * @param {*} projection 
+     *     The projection.
+     */
+    setProjection(projection)
+    {
+        this.projection = projection;
+        console.log("EarthMap.projection = ", projection);
+    }
+
+    /**
      * Set the canvas used to draw the Earth map.
      * 
      * @param {*} canvas 
@@ -60,8 +72,24 @@ class EarthMap
      */
     locationToCanvas(lon, lat)
     {
-        return {x: this.canvas.width * ((lon + 180.0)/360.0),
-                y: this.canvas.height * ((180 - lat - 90.0)/180.0)};
+        if (this.projection === "equirectangular")
+        {
+            return {x: this.canvas.width * ((lon + 180.0)/360.0),
+                    y: this.canvas.height * ((180 - lat - 90.0)/180.0)};
+        }
+        else
+        {
+            var radius = 0.5 * Math.min(this.canvas.width, this.canvas.height);
+            var r = radius * (90.0 - lat) / 180.0;
+
+            var centerX = this.canvas.width * 0.5;
+            var centerY = this.canvas.height * 0.5;
+
+            //return {x: centerX + lon,
+            //        y: centerY + r};
+            return {x: centerX + r * Math.cos(2.0 * Math.PI * lon / 360.0),
+                    y: centerY + r * Math.sin(2.0 * Math.PI * lon / 360.0)};
+        }
     }
 
     /**
@@ -75,8 +103,36 @@ class EarthMap
      */
     canvasToLocation(x, y)
     {
-        return {lon: (360.0 * (x / this.canvas.width)) - 180.0,
-                lat: (180.0 * (1 - y / this.canvas.height) - 90.0)};
+        var lon = (360.0 * (x / this.canvas.width)) - 180.0;
+        var lat = (180.0 * (1 - y / this.canvas.height) - 90.0);
+
+        if (this.projection === "equirectangular")
+        {
+            return {lon: lon,
+                    lat: lat,
+                    outside: false};
+        }
+        else
+        {
+            var radius = 0.5 * Math.min(this.canvas.width, this.canvas.height);
+            var centerX = this.canvas.width * 0.5;
+            var centerY = this.canvas.height * 0.5;
+
+            var deltaX = x - centerX;
+            var deltaY = y - centerY;
+
+            var r = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
+            var lon = 360.0 * Math.atan2(deltaY, deltaX) / (2.0 * Math.PI);
+            var lat = 90.0 - 180.0 * r / radius;
+
+            var outside = false;
+            if (r > radius)
+            {
+                outside = true;
+            }
+
+            return {lon: lon, lat: lat, outside: outside};
+        }
     }
 
     /**
@@ -140,6 +196,36 @@ class EarthMap
             }
         }
         console.log("Added " + numPointsTotal + " points");
+    }
+
+    drawGrid(ctx)
+    {
+        for (var lat = -90; lat < 90.0; lat += 30)
+        {
+
+            var startPoint = this.locationToCanvas(-180.0, lat);
+            ctx.moveTo(startPoint.x, startPoint.y);
+
+            for (var lon = -180.0; lon < 190.0; lon+=5)
+            {
+                var point = this.locationToCanvas(lon, lat);
+                ctx.lineTo(point.x, point.y);
+            }
+            ctx.stroke();
+        }
+
+        for (var lon = -180.0; lon < 180.0; lon+=30)
+        {
+            var startPoint = this.locationToCanvas(lon, -90);
+            ctx.moveTo(startPoint.x, startPoint.y);
+
+            for (var lat = -90; lat <= 90.0; lat += 5)
+            {
+                var point = this.locationToCanvas(lon, lat);
+                ctx.lineTo(point.x, point.y);
+            }
+            ctx.stroke();
+        }
     }
 
     /**

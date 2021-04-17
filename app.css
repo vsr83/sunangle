@@ -1,0 +1,50 @@
+/* The sidebar menu */
+.sidebar {
+    height: 100%; /* 100% Full-height */
+    width: 0; /* 0 width - change this with JavaScript */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Stay on top */
+    top: 0;
+    right: 0;
+    background-color: #111; /* Black*/
+    overflow-x: hidden; /* Disable horizontal scroll */
+    padding-top: 20px; /* Place content 60px from the top */
+    padding-left: 5px;
+    transition: 0.5s; /* 0.5 second transition effect to slide in the sidebar */
+  }
+
+/* The button used to open the sidebar */
+.openbutton {
+    font-size: 15px;
+    box-align: center;
+    cursor: pointer;
+    background-color: #222;
+    color: white;
+    padding: 1px 2px;
+    border: none;
+  }
+
+.closebutton {
+    position: absolute;
+    font-size: 15px;
+    box-align: center;
+    cursor: pointer;
+    background-color: #222;
+    color: white;
+    padding: 1px 2px;
+    border: none;
+    right: 20px;
+    bottom: 40px;
+  }
+
+table, th, td, tr {
+    font-size: 15px;
+}
+..openbutton, .closebutton:hover {
+    background-color: #444;
+  }
+
+#main {
+transition: margin-left .5s; /* If you want a transition effect */
+padding: 0px;
+}

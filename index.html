@@ -4,15 +4,76 @@
     <meta charset="UTF-8">
     <title>Daylight</title>
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
+    <link rel="stylesheet" href="app.css">
 </head>
 <body style="background: black; color: white; overflow-y: hidden; overflow-x: hidden">
-    <p id="timeLabel">
-    Local : <span id="localtime"></span><br>
-    UTC: <span id="utctime"></span><br>
-    Julian: <span id="juliantime"></span></p>
 
-    <canvas id="worldGraph" width="1000" height="600" style="border:1px solid #000000;">
-    </canvas>
+    <div id="main">
+
+        <table id="timeLabel">
+        <tr>
+            <td>
+                Local : <span id="localtime"></span><br>
+            </td>
+            <td width="50">
+            </td>
+            <td>
+                <button class="openbutton" onclick="openSidebar()">Open Configuration</button>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                UTC: <span id="utctime"></span><br>
+            </td>
+            <td width="50">
+            </td>
+            <!--td>
+                RA : <span id="RA"></span>
+            </td-->
+        </tr>
+        <tr>
+            <td>
+                Julian: <span id="juliantime"></span>
+            </td>
+            <!--td>
+                Decl : <span id="decl"></span>
+            </td-->
+        </tr>
+        <!--p id="timeLabel">
+            Local : <span id="localtime"></span><br>
+            UTC: <span id="utctime"></span><br>
+            Julian: <span id="juliantime"></span>
+        </p-->
+        </table>
+
+        <canvas id="worldGraph" width="1000" height="600" style="border:1px solid #000000;">
+        </canvas>
+    </div>
+    <div id="confSidebar" class="sidebar">
+        <h3>Configuration:</h3>
+
+        <h4>Projection:</h4>
+        <input type="radio" id="equirectangular" name="projection" onclick="setProjection('equirectangular')" checked>
+        <label for="equirectangular">Equirectangular</label><br>
+        <input type="radio" id="azequidistant" name="projection" onclick="setProjection('azequidistant')")>
+        <label for="azequidistant">Azimuthal Equidistant</label><br>
+
+        <h4>Grid:</h4>
+        Enable Grid: <input type="checkbox" id="gridCheckbox" onclick="toggleGrid()"><br>
+        <label for="gridColor">Grid Color: </label>
+        <input type="color" id="gridColor" name="gridColor" value="#aaaaaa"><br>
+        
+        <h4>Map:</h4>
+        <label for="mapColor">Map Color: </label>
+        <input type="color" id="mapColor" name="mapColor" value="#000000"><br>
+
+        <h4>Contour Data:</h4>
+        <label for="contourRange">Degrees per Contour: </label>
+        <input type="range" min="1" max="90" value="10" name="contourRange" class="slider" id="contourRange">
+               
+        <button class="closebutton" onclick="closeSidebar()">Hide Configuration</button>
+    </div>
+
     <script src="computation/Coordinates.js"></script>
     <script src="computation/TimeConversions.js"></script>
     <script src="computation/Orbits.js"></script>
@@ -20,6 +81,78 @@
     <script src="./EarthMap.js"></script>
 
     <script>
+        // The object for the Earth map.
+        var earthMap = null;
+        // The projection used to map the data.
+        var projection = "equirectangular";
+        // Boolean indicating whether grid is drawn.
+        var gridEnabled = false;
+        // Degrees per contour
+        var degreesPerContour = 10;
+
+        // Colors for the grid and map lines.
+        var gridColor = "#aaaaaa";
+        var mapColor = "#000000";
+
+        // Define event handlers for the selection of grid and map colors.
+        document.getElementById("gridColor").onchange = function() 
+        {
+            gridColor = this.value;
+        }
+        document.getElementById("mapColor").onchange = function() 
+        {
+            mapColor = this.value;
+        }
+        document.getElementById("contourRange").oninput = function() 
+        {
+            degreesPerContour = this.value;
+        }
+
+        /**
+         * Set projection type used for the plotting of data.
+         * 
+         * @param {*} newProjection 
+         *     The projection type..
+         */
+         function setProjection(newProjection)
+        {
+            console.log("New projection : " + newProjection);
+            projection = newProjection;
+            earthMap.setProjection(newProjection);
+            //update(earthMap);
+        }
+
+        /**
+         * Toggle drawing of the grid.
+         */
+        function toggleGrid()
+        {
+            var checkBox = document.getElementById("gridCheckbox");
+            gridEnabled = checkBox.checked;
+        }
+
+        /**
+         * Make sidebar visible.
+         */
+        function openSidebar()
+        {
+            console.log("openSidebar");
+
+            document.getElementById("confSidebar").style.width = "250px";
+            document.getElementById("main").style.marginRight = "250px";
+        }
+
+        /**
+         * Hide sidebar.
+         */
+         function closeSidebar()
+        {
+            console.log("openSidebar");
+
+            document.getElementById("confSidebar").style.width = "0px";
+            document.getElementById("main").style.marginRight = "0px";
+        }
+
         /**
          * Redraw the map and the contour according to the Sun altitude.
          * 
@@ -37,9 +170,16 @@
             var timeLabel = document.getElementById("timeLabel");
             var timeHeight = timeLabel.getBoundingClientRect().height;
             console.log(timeHeight);
+
+            var confSidebar = document.getElementById("confSidebar");
+            var sideBarWidth = confSidebar.clientWidth; //window.getComputedStyle(confSidebar).width;
+            console.log("Canvas height: " + timeHeight);
+
+            console.log("Sidebar width: " + sideBarWidth);
+
             // Adjust the canvas height according to the body size and the height of the time label.
             var body = document.getElementsByTagName('body')[0];
-            canvas.width = document.documentElement.clientWidth;
+            canvas.width = document.documentElement.clientWidth - sideBarWidth;
             canvas.height = document.documentElement.clientHeight - timeHeight;
 
             // Compute Julian time.
@@ -49,15 +189,21 @@
             JT = julianTimes.JT;
 
             // Update Julian time to the time label.
-            document.getElementById("localtime").innerText = today.toTimeString();
+            document.getElementById("localtime").innerText = today.toString();
             document.getElementById("utctime").innerText = today.toUTCString();
             document.getElementById("juliantime").innerText = JT;
-            
+
             // Compute equitorial coordinates of the Sun.
             var sunAltitude = new SunAltitude();
             var eqCoords = sunAltitude.computeEquitorial(JT);
             var rA = eqCoords.rA;
             var decl = eqCoords.decl;
+
+            rAhms = Coordinates.deg2Time(Coordinates.rad2Deg(rA));
+            rAhmsText = rAhms.h + "h " + rAhms.m + " m " + rAhms.s + " s";
+
+            //document.getElementById("RA").innerText = rAhmsText;
+            //document.getElementById("decl").innerText = Coordinates.rad2Deg(decl);
 
             console.log("Right Ascension : " + Coordinates.rad2Deg(rA) + " deg ");
             console.log("Declination     : " + Coordinates.rad2Deg(decl) + " deg");
@@ -81,24 +227,34 @@
                     
                     // Index in the imagedata array.
                     var index = (x + y * canvas.width) * 4;
-                    if (altitude > 0.0)
+                    if (location.outside == true)
                     {
-                        color = 128 + 10 * Math.floor(altitude / 10.0);
-
-                        imageData.data[index] = color;
-                        imageData.data[index+1] = color;
-                        imageData.data[index+2] = color;
+                        imageData.data[index] = 0;
+                        imageData.data[index+1] = 0;
+                        imageData.data[index+2] = 0;
                         imageData.data[index+3] = 255;
                     }
                     else
                     {
-                        color = 90 - 5 * Math.floor(-altitude / 10.0);
+                        if (altitude > 0.0)
+                        {
+                            color = 128 + 10 * Math.floor(altitude / degreesPerContour);
 
-                        imageData.data[index] = color;
-                        imageData.data[index+1] = color;
-                        imageData.data[index+2] = color;
-                        imageData.data[index+3] = 255;
+                            imageData.data[index] = color;
+                            imageData.data[index+1] = color;
+                            imageData.data[index+2] = color;
+                            imageData.data[index+3] = 255;
+                        }
+                        else
+                        {
+                            color = 90 - 5 * Math.floor(-altitude / degreesPerContour);
 
+                            imageData.data[index] = color;
+                            imageData.data[index+1] = color;
+                            imageData.data[index+2] = color;
+                            imageData.data[index+3] = 255;
+
+                        }
                     }
                 }
             }
@@ -106,7 +262,18 @@
             coordHome = earthMap.locationToCanvas(24.9333, 60.16);
 
             // Draw the map overlay.
+            ctx.beginPath();
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = mapColor;
             earthMap.draw(ctx);
+
+            if (gridEnabled)
+            {
+                ctx.beginPath();
+                ctx.lineWidth = 0.5;
+                ctx.strokeStyle = gridColor;
+                earthMap.drawGrid(ctx);
+            }
 
             console.log("Finished.");
             var t1 = performance.now();
@@ -115,7 +282,8 @@
 
         // Make listener for loading the World map JSON at start.
         window.addEventListener('load', () => {
-            var earthMap = new EarthMap();
+            earthMap = new EarthMap();
+            earthMap.setProjection('equirectangular');
 
             var xmlHTTP = new XMLHttpRequest();
             xmlHTTP.onreadystatechange = function()
@@ -134,6 +302,12 @@
                     // Draw the map and add periodic update of the graph.
                     update(earthMap);
                     setInterval(function() {update(earthMap);}, 1000);
+
+                    canvas.addEventListener('click', function(event) {
+                        var x = event.pageX - canvas.offsetLeft - canvas.clientLeft;
+                        var y = event.pageY - canvas.offsetTop - canvas.clientTop;
+                        console.log(x + " " + y);
+                    });
                 }
             }
             xmlHTTP.open("GET", "json/worldmap.json", true);
@@ -146,8 +320,6 @@
                 update(earthMap);
             }
         })
-
-
     </script>
 </body>
-</html
+</html>
