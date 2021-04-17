@@ -125,43 +125,43 @@
         document.getElementById("gridColor").onchange = function() 
         {
             gridColor = this.value;
-            update(earthMap);
+            update(earthMap, true);
         }
         document.getElementById("pathColor").onchange = function() 
         {
             pathColor = this.value;
-            update(earthMap);
+            update(earthMap, true);
         }
         document.getElementById("mapColor").onchange = function() 
         {
             mapColor = this.value;
-            update(earthMap);
+            update(earthMap, true);
         }
         document.getElementById("contourRange").oninput = function() 
         {
             degreesPerContour = this.value;
-            update(earthMap);
+            update(earthMap, true);
         }
         document.getElementById("deltaHourRange").oninput = function() 
         {
             console.log("Delta hours " + this.value);
             deltaHours = this.value;
             document.getElementById("deltaHour").innerText = this.value;
-            update(earthMap);
+            update(earthMap, true);
         }
         document.getElementById("deltaMinRange").oninput = function() 
         {
             console.log("Delta minutes " + this.value);
             deltaMins = this.value;
             document.getElementById("deltaMin").innerText = this.value;
-            update(earthMap);
+            update(earthMap, true);
         }
         document.getElementById("deltaDayRange").oninput = function() 
         {
             console.log("Delta days " + this.value);
             deltaDays = this.value;
             document.getElementById("deltaDay").innerText = this.value;
-            update(earthMap);
+            update(earthMap, true);
         }
 
         /**
@@ -175,7 +175,7 @@
             console.log("New projection : " + newProjection);
             projection = newProjection;
             earthMap.setProjection(newProjection);
-            update(earthMap);
+            update(earthMap, false);
         }
 
         /**
@@ -245,7 +245,7 @@
          * @param {*} earthMap 
          *     The EarthMap object used for drawing the map.
          */
-        function update(earthMap)
+        function update(earthMap, fast)
         {
             // Start measuring time required to update the image.
             var t0 = performance.now();
@@ -305,6 +305,8 @@
             // Draw the contour background image according to Sun altitude.
             var imageData = ctx.getImageData(0,0, canvas.width, canvas.height);
 
+            var alititude = 0;
+
             for (var x = 0; x < canvas.width; x++)
             {
                 for (var y = 0; y < canvas.height; y++)
@@ -312,8 +314,11 @@
                     // Map the pixel on the canvas to latitude and longitude on Earth.
                     var location = earthMap.canvasToLocation(x, y);
                     // Compute the altitude.
-                    var altitude = sunAltitude.computeAltitude(rA, decl, JD, JT,
-                            location.lon, location.lat);
+                    if (!fast || (fast && (y % 5 == 0)))
+                    {
+                        altitude = sunAltitude.computeAltitude(rA, decl, JD, JT,
+                                location.lon, location.lat);
+                    }
                     
                     // Index in the imagedata array.
                     var index = (x + y * canvas.width) * 4;
@@ -425,7 +430,7 @@
                     var canvas = document.getElementById("worldGraph");
                     earthMap.setCanvas(canvas);
                     // Draw the map and add periodic update of the graph.
-                    update(earthMap);
+                    update(earthMap, false);
                     setInterval(function() {update(earthMap);}, 1000);
 
                     canvas.addEventListener('click', function(event) {
@@ -442,7 +447,7 @@
             body = document.getElementsByTagName('body')[0],
             body.onresize = function()
             {
-                update(earthMap);
+                update(earthMap, true);
             }
         })
     </script>
