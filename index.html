@@ -10,7 +10,7 @@
 
     <div id="main">
 
-        <table id="timeLabel">
+        <table id="timeLabel" width="100%">
         <tr>
             <td>
                 Local : <span id="localtime"></span><br>
@@ -64,9 +64,10 @@
         <input type="color" id="gridColor" name="gridColor" value="#aaaaaa"><br>
 
         <h4>Sun Path:</h4>
-        Enable Sun Path: <input type="checkbox" id="pathCheckbox" onclick="togglePath()"><br>
+        <label for="pathCheckbox">Enable Sun Path: </label>
+        <input type="checkbox" id="pathCheckbox" onclick="togglePath()"><br>
         <label for="pathColor">Path Color: </label>
-        <input type="color" id="pathColor" name="pathColor" value="#cccccc"><br>
+        <input type="color" id="pathColor" name="pathColor" value="#FFFF00"><br>
         
         <h4>Map:</h4>
         <label for="mapColor">Map Color: </label>
@@ -75,23 +76,26 @@
         <h4>Contour Data:</h4>
         <label for="contourRange">Degrees per Contour: </label>
         <input type="range" min="1" max="90" value="10" name="contourRange" class="slider" id="contourRange">
+        <label for="contourRange" id="contourLabel">10</label>
 
         <h4>Delta Time:</h4>
-        <label for="minuteRange">Minutes: </label>
+        <label for="minuteRange">M: </label>
         <input type="range" min="-60" max="60" value="0" name="minuteRange" class="slider" id="deltaMinRange">
         <label for="minuteRange" id="deltaMin"> 0 </label>
         <br>
-        <label for="hourRange">Hours: </label>
+        <label for="hourRange">H: </label>
         <input type="range" min="-24" max="24" value="0" name="hourRange" class="slider" id="deltaHourRange">
         <label for="hourRange" id="deltaHour"> 0 </label>
         <br>
-        <label for="dayRange">Days: </label>
+        <label for="dayRange">D: </label>
         <input type="range" min="-180" max="180" value="0" name="dayRange" class="slider" id="deltaDayRange">
         <label for="dayRange" id="deltaDay"> 0 </label>
         <br>
 
-
         <button class="closebutton" onclick="closeSidebar()">Hide Configuration</button>
+        <br>
+        <br>
+        <br>
     </div>
 
     <script src="computation/Coordinates.js"></script>
@@ -116,12 +120,13 @@
         var deltaHours = 0;
         var deltaDays = 0;
 
+        // Interval for the periodic execution of update. 
         var interval = null;
 
         // Colors for the grid and map lines.
         var gridColor = "#aaaaaa";
         var mapColor = "#000000";
-        var pathColor = "#cccccc";
+        var pathColor = "#ffff00";
 
         // Define event handlers for the selection of grid and map colors.
         document.getElementById("gridColor").onchange = function() 
@@ -142,6 +147,7 @@
         document.getElementById("contourRange").oninput = function() 
         {
             degreesPerContour = this.value;
+            document.getElementById("contourLabel").innerText = this.value;
             update(earthMap, true);
         }
         document.getElementById("deltaHourRange").oninput = function() 
@@ -242,77 +248,72 @@
         }
 
         /**
-         * Redraw the map and the contour according to the Sun altitude.
+         * Draw the path of the Sun.
          * 
-         * @param {*} earthMap 
-         *     The EarthMap object used for drawing the map.
+         * @param {*} sunAltitude
+         *     The SunAltitude object used to compute the coordinates of the Sun.
+         * @param {*} rA 
+         *     Right-ascension of the Sun (in radians).
+         * @param {*} decl 
+         *     Declination of the Sun (in radians).
+         * @param {*} JD 
+         *     Julian day.
+         * @param {*} JT 
+         *     Julian time.
+         * @param {*} ctx 
+         *     The canvas context used for drawing.
          */
-        function update(earthMap, fast)
+        function drawPath(sunAltitude, rA, decl, JD, JT, ctx)
         {
-            if (interval != null)
+            for (var JDdiff = -0.5; JDdiff <= 0.5; JDdiff += 0.01)
             {
-                clearInterval(interval);
+                lonlat = sunAltitude.computeSunLonLat(rA, decl, JD, JT + JDdiff);
+                var p = earthMap.locationToCanvas(lonlat.lon, lonlat.lat);
+
+                if (JDdiff == -0.5)
+                {
+                    ctx.moveTo(p.x, p.y);
+                }
+                else
+                {
+                    ctx.lineTo(p.x, p.y);
+                }
             }
+            ctx.stroke();
 
-            // Start measuring time required to update the image.
-            var t0 = performance.now();
+            // Draw current location
+            lonlat = sunAltitude.computeSunLonLat(rA, decl, JD, JT);
+            var p = earthMap.locationToCanvas(lonlat.lon, lonlat.lat);
+            ctx.beginPath();
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = "#000000";
+            ctx.arc(p.x, p.y, 5, 0, 2*Math.PI);
+            ctx.fill();
+        }
 
-            var canvas = earthMap.canvas;
-
-            // Get height of the time label.
-            var timeLabel = document.getElementById("timeLabel");
-            var timeHeight = timeLabel.getBoundingClientRect().height;
-            console.log(timeHeight);
-
-            var confSidebar = document.getElementById("confSidebar");
-            var sideBarWidth = confSidebar.clientWidth; //window.getComputedStyle(confSidebar).width;
-            console.log("Canvas height: " + timeHeight);
-
-            console.log("Sidebar width: " + sideBarWidth);
-
-            // Adjust the canvas height according to the body size and the height of the time label.
-            var body = document.getElementsByTagName('body')[0];
-            canvas.width = document.documentElement.clientWidth - sideBarWidth;
-            canvas.height = document.documentElement.clientHeight - timeHeight;
-
-            // Compute Julian time.
-            var today = new Date(new Date().getTime() 
-            + 24 * 3600 * 1000 * deltaDays
-            + 3600 * 1000 * deltaHours
-            + 60 * 1000 * deltaMins);
-            console.log("hours " + today.getHours());
-            julianTimes = TimeConversions.computeJulianTime(today);
-            JD = julianTimes.JD;
-            JT = julianTimes.JT;
-
-            // Update Julian time to the time label.
-            document.getElementById("localtime").innerText = today.toString();
-            document.getElementById("utctime").innerText = today.toUTCString();
-            document.getElementById("juliantime").innerText = JT;
-
-            // Compute equitorial coordinates of the Sun.
-            var sunAltitude = new SunAltitude();
-            var eqCoords = sunAltitude.computeEquitorial(JT);
-            var rA = eqCoords.rA;
-            var decl = eqCoords.decl;
-
-            rAhms = Coordinates.deg2Time(Coordinates.rad2Deg(rA));
-            rAhmsText = rAhms.h + "h " + rAhms.m + " m " + rAhms.s + " s";
-
-            //document.getElementById("RA").innerText = rAhmsText;
-            //document.getElementById("decl").innerText = Coordinates.rad2Deg(decl);
-
-            console.log("Right Ascension : " + Coordinates.rad2Deg(rA) + " deg ");
-            console.log("Declination     : " + Coordinates.rad2Deg(decl) + " deg");
-            
-            console.log("Drawing.");
-            var ctx = canvas.getContext("2d");
-            ctx.imageSmoothingEnabled = true;
-
-            // Draw the contour background image according to Sun altitude.
+        /**
+         * Draw the path of the Sun.
+         * 
+         * @param {*} sunAltitude
+         *     The SunAltitude object used to compute the coordinates of the Sun.
+         * @param {*} rA 
+         *     Right-ascension of the Sun (in radians).
+         * @param {*} decl 
+         *     Declination of the Sun (in radians).
+         * @param {*} JD 
+         *     Julian day.
+         * @param {*} JT 
+         *     Julian time.
+         * @param {*} canvas
+         *     The canvas used for drawing.
+         * @param {*} ctx 
+         *     The canvas context used for drawing.
+         * @param {*} fast
+         *     Quick draw.
+         */
+        function drawContours(sunAltitude, rA, decl, JD, JT, canvas, ctx, fast)
+        {
             var imageData = ctx.getImageData(0,0, canvas.width, canvas.height);
-
-            var alititude = 0;
 
             for (var x = 0; x < canvas.width; x++)
             {
@@ -361,8 +362,78 @@
                 }
             }
             ctx.putImageData(imageData, 0, 0);
-            coordHome = earthMap.locationToCanvas(24.9333, 60.16);
+        }
 
+        /**
+         * Redraw the map and the contour according to the Sun altitude.
+         * 
+         * @param {*} earthMap 
+         *     The EarthMap object used for drawing the map.
+         */
+        function update(earthMap, fast)
+        {
+            if (interval != null && fast)
+            {
+                clearInterval(interval);
+                interval = null;
+            }
+
+            // Start measuring time required to update the image.
+            var t0 = performance.now();
+
+            var canvas = earthMap.canvas;
+
+            // Get height of the time label.
+            var timeLabel = document.getElementById("timeLabel");
+            var timeHeight = timeLabel.getBoundingClientRect().height;
+            console.log(timeHeight);
+
+            var confSidebar = document.getElementById("confSidebar");
+            var sideBarWidth = confSidebar.clientWidth; //window.getComputedStyle(confSidebar).width;
+            console.log("Canvas height: " + timeHeight);
+
+            console.log("Sidebar width: " + sideBarWidth);
+
+            // Adjust the canvas height according to the body size and the height of the time label.
+            var body = document.getElementsByTagName('body')[0];
+            canvas.width = document.documentElement.clientWidth - sideBarWidth;
+            canvas.height = document.documentElement.clientHeight - timeHeight;
+
+            // Compute Julian time.
+            var today = new Date(new Date().getTime() 
+            + 24 * 3600 * 1000 * deltaDays
+            + 3600 * 1000 * deltaHours
+            + 60 * 1000 * deltaMins);
+            console.log("hours " + today.getHours());
+            julianTimes = TimeConversions.computeJulianTime(today);
+            JD = julianTimes.JD;
+            JT = julianTimes.JT;
+
+            // Update Julian time to the time label.
+            document.getElementById("localtime").innerText = today.toString();
+            document.getElementById("utctime").innerText = today.toUTCString();
+            document.getElementById("juliantime").innerText = JT;
+
+            // Compute equitorial coordinates of the Sun.
+            var sunAltitude = new SunAltitude();
+            var eqCoords = sunAltitude.computeEquitorial(JT);
+            var rA = eqCoords.rA;
+            var decl = eqCoords.decl;
+
+            //rAhms = Coordinates.deg2Time(Coordinates.rad2Deg(rA));
+            //rAhmsText = rAhms.h + "h " + rAhms.m + " m " + rAhms.s + " s";
+            //document.getElementById("RA").innerText = rAhmsText;
+            //document.getElementById("decl").innerText = Coordinates.rad2Deg(decl);
+
+            console.log("Right Ascension : " + Coordinates.rad2Deg(rA) + " deg ");
+            console.log("Declination     : " + Coordinates.rad2Deg(decl) + " deg");
+            
+            console.log("Drawing.");
+            var ctx = canvas.getContext("2d");
+            ctx.imageSmoothingEnabled = true;
+
+            drawContours(sunAltitude, rA, decl, JD, JT, canvas, ctx, fast);
+            
             // Draw the map overlay.
             ctx.beginPath();
             ctx.lineWidth = 1;
@@ -383,42 +454,18 @@
                 ctx.beginPath();
                 ctx.lineWidth = 1;
                 ctx.strokeStyle = pathColor;
-
-                for (var JDdiff = -0.5; JDdiff <= 0.5; JDdiff += 0.01)
-                {
-                    lonlat = sunAltitude.computeSunLonLat(rA, decl, JD, JT + JDdiff);
-
-                    var p = earthMap.locationToCanvas(lonlat.lon, lonlat.lat);
-
-
-                    if (JDdiff == -0.5)
-                    {
-                        ctx.moveTo(p.x, p.y);
-                    }
-                    else
-                    {
-                        ctx.lineTo(p.x, p.y);
-                    }
-                }
-                ctx.stroke();
-
-                // Draw current location
-                lonlat = sunAltitude.computeSunLonLat(rA, decl, JD, JT);
-                var p = earthMap.locationToCanvas(lonlat.lon, lonlat.lat);
-                ctx.beginPath();
-                ctx.lineWidth = 1;
-                ctx.strokeStyle = "#000000";
-                ctx.arc(p.x, p.y, 5, 0, 2*Math.PI);
-                ctx.fill();
+                drawPath(sunAltitude, rA, decl, JD, JT, ctx);
             }
 
             console.log("Finished.");
             var t1 = performance.now();
             console.log((t1 - t0) + " ms");
 
-            //timeout = setTimeout(function(){update(earthMap, false);}, 1000);
-            interval = setInterval(function() {update(earthMap);}, 1000);
+            if (interval == null)
+            {
+                interval = setInterval(function() {update(earthMap);}, 1000);
             }
+        }
 
         // Make listener for loading the World map JSON at start.
         window.addEventListener('load', () => {

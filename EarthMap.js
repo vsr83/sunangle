@@ -79,7 +79,7 @@ class EarthMap
         }
         else
         {
-            var radius = 0.5 * Math.min(this.canvas.width, this.canvas.height);
+            var radius = 0.48 * Math.min(this.canvas.width, this.canvas.height);
             var r = radius * (90.0 - lat) / 180.0;
 
             var centerX = this.canvas.width * 0.5;
@@ -114,7 +114,7 @@ class EarthMap
         }
         else
         {
-            var radius = 0.5 * Math.min(this.canvas.width, this.canvas.height);
+            var radius = 0.48 * Math.min(this.canvas.width, this.canvas.height);
             var centerX = this.canvas.width * 0.5;
             var centerY = this.canvas.height * 0.5;
 
@@ -198,6 +198,12 @@ class EarthMap
         console.log("Added " + numPointsTotal + " points");
     }
 
+    /**
+     * Draw grid.
+     * 
+     * @param {*} ctx 
+     *     The canvas context used for drawing.
+     */
     drawGrid(ctx)
     {
         for (var lat = -90; lat < 90.0; lat += 30)

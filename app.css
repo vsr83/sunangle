@@ -1,22 +1,24 @@
 /* The sidebar menu */
 .sidebar {
-    height: 100%; /* 100% Full-height */
-    width: 0; /* 0 width - change this with JavaScript */
-    position: fixed; /* Stay in place */
-    z-index: 1; /* Stay on top */
+    height: 100%; 
+    width: 0; 
+    position: fixed; 
+    z-index: 1; 
     top: 0;
     right: 0;
-    background-color: #111; /* Black*/
-    overflow-x: hidden; /* Disable horizontal scroll */
-    padding-top: 20px; /* Place content 60px from the top */
+    background-color: #111; 
+    overflow-x: hidden; 
+    padding-top: 20px; 
+    padding-bottom: 0px; 
     padding-left: 5px;
-    transition: 0.5s; /* 0.5 second transition effect to slide in the sidebar */
+    transition: 0.5s; 
   }
 
 /* The button used to open the sidebar */
 .openbutton {
     font-size: 15px;
-    box-align: center;
+    right: 15px;
+    box-align: right;
     cursor: pointer;
     background-color: #222;
     color: white;
@@ -34,17 +36,16 @@
     padding: 1px 2px;
     border: none;
     right: 20px;
-    bottom: 40px;
   }
 
 table, th, td, tr {
     font-size: 15px;
 }
-..openbutton, .closebutton:hover {
+.openbutton:hover, .closebutton:hover {
     background-color: #444;
   }
 
 #main {
-transition: margin-left .5s; /* If you want a transition effect */
-padding: 0px;
+    transition: margin-left .5s; 
+    padding: 0px;
 }
